@@ -1,17 +1,43 @@
-# ScreenMoments
+# Screen Moments
 
-A simple Windows application that demonstrates global hotkey registration using Go.
+A simple application for capturing screenshots and receiving RTMP video streams from OBS.
 
 ## Features
 
-- Registers a global hotkey (Ctrl+Alt+F1)
-- Performs an action when the hotkey is triggered
-- Clean exit with Ctrl+C
+- Screenshot capture using hotkey (Ctrl+Alt+F1)
+- RTMP server to receive video streams from OBS
+
+## RTMP Streaming from OBS
+
+To stream video from OBS to Screen Moments:
+
+1. Open OBS Studio
+2. Go to Settings -> Stream
+3. Select "Custom..." as the service
+4. Set the Server to: `rtmp://localhost:1935/live`
+5. Set the Stream Key to: `screenmoments`
+6. Click "OK" to save settings
+7. Click "Start Streaming" in OBS
+
+The Screen Moments application will automatically receive and display the RTMP stream status.
+
+## Building from Source
+
+```bash
+# Get dependencies
+go mod tidy
+
+# Run the application
+go run .
+
+# Build the application
+go build .
+```
 
 ## Requirements
 
-- Go 1.18 or later
-- Windows operating system
+- Go 1.20 or later
+- OBS Studio (for RTMP streaming)
 
 ## Installation
 
