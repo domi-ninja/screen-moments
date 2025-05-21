@@ -36,6 +36,7 @@ var (
 	procGetMessage       = user32.NewProc("GetMessageW")
 	procTranslateMessage = user32.NewProc("TranslateMessage")
 	procDispatchMessage  = user32.NewProc("DispatchMessageW")
+	procPeekMessage      = user32.NewProc("PeekMessageW")
 )
 
 // RegisterHotKey wraps the Windows RegisterHotKey function
@@ -79,6 +80,7 @@ func GetMessage(msg *MSG, hwnd windows.Handle, msgFilterMin, msgFilterMax uint32
 	return int(ret)
 }
 
+
 // TranslateMessage wraps the Windows TranslateMessage function
 func TranslateMessage(msg *MSG) bool {
 	ret, _, _ := procTranslateMessage.Call(uintptr(unsafe.Pointer(msg)))
@@ -102,7 +104,14 @@ func main() {
 	fmt.Println("Hotkey registered: Ctrl+Alt+F1")
 	fmt.Println("Press Ctrl+C to exit")
 
-	// Message loop to capture hotkey events
+	// Setup signal channel for graceful shutdown
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+
+	// Use a channel to communicate when hotkey is pressed
+	hotkeyPressed := make(chan bool)
+
+	// Message loop to capture hotkey events - run in main thread
 	go func() {
 		var msg MSG
 		for {
@@ -126,12 +135,18 @@ func main() {
 		}
 	}()
 
-	// Wait for Ctrl+C to exit
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
-	<-sigCh
+	// Wait for hotkey or Ctrl+C
+	for {
+		select {
+		case <-hotkeyPressed:
+			fmt.Println("Hotkey action running...")
+			// Add your hotkey action code here
 
-	// Unregister the hotkey before exiting
-	UnregisterHotKey(0, int32(hotkeyID))
-	fmt.Println("Hotkey unregistered. Exiting...")
+		case <-sigCh:
+			// Unregister the hotkey before exiting
+			UnregisterHotKey(0, int32(hotkeyID))
+			fmt.Println("Hotkey unregistered. Exiting...")
+			return
+		}
+	}
 }
