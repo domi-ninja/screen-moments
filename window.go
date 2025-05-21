@@ -10,6 +10,7 @@ import (
 var mainWindow *walk.MainWindow
 var statusLabel *walk.Label
 var streamStatusLabel *walk.Label
+var recordStreamCheckBox *walk.CheckBox
 
 func CreateWindow() {
 	// Initialize the application
@@ -52,6 +53,19 @@ func CreateWindow() {
 					},
 					Label{
 						Text: "Set up OBS to stream to the above URL and stream key",
+					},
+					CheckBox{
+						AssignTo: &recordStreamCheckBox,
+						Text:     "Save stream to file",
+						OnCheckedChanged: func() {
+							ToggleStreamRecording(recordStreamCheckBox.Checked())
+
+							if recordStreamCheckBox.Checked() {
+								statusLabel.SetText("Stream recording enabled")
+							} else {
+								statusLabel.SetText("Stream recording disabled")
+							}
+						},
 					},
 					Label{
 						AssignTo: &streamStatusLabel,

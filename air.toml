@@ -30,6 +30,7 @@ stop_on_error = true
 send_interrupt = false
 # Kill process if interrupt signal is not handled within this time frame (seconds)
 kill_delay = 500 # ms
+precmd = [ "make clean" ]
 
 [color]
 # Customize each part's color. If no color is found, use the raw app log.

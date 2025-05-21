@@ -3,10 +3,14 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/nareix/joy4/av/avutil"
 	"github.com/nareix/joy4/av/pubsub"
+	"github.com/nareix/joy4/format/mp4"
 	"github.com/nareix/joy4/format/rtmp"
 )
 
@@ -21,6 +25,7 @@ var (
 	videoStream *pubsub.Queue
 	mutex       sync.Mutex
 	isStreaming bool
+	saveToFile  bool
 )
 
 // StartRTMPServer initializes and starts an RTMP server
@@ -57,10 +62,67 @@ func StartRTMPServer() {
 			log.Printf("Stream #%d: Type=%v", i, stream.Type())
 		}
 
-		// Copy the stream to our queue
-		err = avutil.CopyFile(videoStream, conn)
-		if err != nil {
-			log.Println("Stream ended with error:", err)
+		// Create a file writer if saving is enabled
+		var fileWriter *mp4.Muxer
+		var recordFile *os.File
+
+		if saveToFile {
+			// Create recordings directory if it doesn't exist
+			recordingsDir := "recordings"
+			if err := os.MkdirAll(recordingsDir, 0755); err != nil {
+				log.Println("Error creating recordings directory:", err)
+			} else {
+				// Create a file with timestamp in the filename
+				timestamp := time.Now().Format("2006-01-02_15-04-05")
+				filename := filepath.Join(recordingsDir, fmt.Sprintf("screenmoments_%s.mp4", timestamp))
+
+				recordFile, err = os.Create(filename)
+				if err != nil {
+					log.Println("Error creating recording file:", err)
+				} else {
+					fileWriter = mp4.NewMuxer(recordFile)
+
+					// Write header
+					if err := fileWriter.WriteHeader(streams); err != nil {
+						log.Println("Error writing MP4 header:", err)
+						recordFile.Close()
+						fileWriter = nil
+					} else {
+						log.Println("Recording to file:", filename)
+						updateStreamStatus(fmt.Sprintf("Recording to %s", filename))
+					}
+				}
+			}
+		}
+
+		// Copy packets one by one to both queue and file
+		for {
+			pkt, err := conn.ReadPacket()
+			if err != nil {
+				log.Println("Stream ended:", err)
+				break
+			}
+
+			// Write to queue
+			if err := videoStream.WritePacket(pkt); err != nil {
+				log.Println("Error writing to queue:", err)
+			}
+
+			// Write to file if recording
+			if fileWriter != nil {
+				if err := fileWriter.WritePacket(pkt); err != nil {
+					log.Println("Error writing to file:", err)
+				}
+			}
+		}
+
+		// Close file if we were recording
+		if fileWriter != nil {
+			if err := fileWriter.WriteTrailer(); err != nil {
+				log.Println("Error writing trailer:", err)
+			}
+			recordFile.Close()
+			log.Println("Recording saved")
 		}
 
 		mutex.Lock()
@@ -74,7 +136,10 @@ func StartRTMPServer() {
 	// Handle RTMP play requests (for potential playback)
 	rtmpServer.HandlePlay = func(conn *rtmp.Conn) {
 		cursor := videoStream.Latest()
-		avutil.CopyFile(conn, cursor)
+		err := avutil.CopyFile(conn, cursor)
+		if err != nil {
+			log.Println("On playing, Error copying file:", err)
+		}
 	}
 
 	// Start the RTMP server in a goroutine
@@ -87,6 +152,19 @@ func StartRTMPServer() {
 	}()
 
 	updateStreamStatus("RTMP server started. Ready for OBS stream.")
+}
+
+// ToggleStreamRecording enables or disables saving the stream to a file
+func ToggleStreamRecording(enabled bool) {
+	mutex.Lock()
+	defer mutex.Unlock()
+	saveToFile = enabled
+
+	if saveToFile {
+		log.Println("Stream recording enabled")
+	} else {
+		log.Println("Stream recording disabled")
+	}
 }
 
 // StopRTMPServer logs that the RTMP server is stopping
