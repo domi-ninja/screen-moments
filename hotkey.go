@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -92,61 +92,59 @@ func DispatchMessage(msg *MSG) uintptr {
 	return ret
 }
 
-func StartHotkeyListener() {
+// CaptureScreenshot is called when the hotkey is triggered or the button is clicked
+func CaptureScreenshot() {
+	// Here you would implement your screenshot capturing functionality
+	log.Println("Screenshot captured!")
 
+	// Update the UI to indicate a capture happened
+	if mainWindow != nil && statusLabel != nil {
+		// This will run on the UI thread
+		mainWindow.Synchronize(func() {
+			statusLabel.SetText("Screenshot captured!")
+
+			// You could add more UI updates here, such as showing the captured image
+		})
+	}
+}
+
+func StartHotkeyListener() {
 	// Register a hotkey (Ctrl+Alt+F1 in this example)
 	hotkeyID := 1
 	if !RegisterHotKey(0, int32(hotkeyID), MOD_CONTROL|MOD_ALT, VK_F1) {
-		fmt.Println("Failed to register hotkey")
-		os.Exit(1)
+		log.Println("Failed to register hotkey")
+		return
 	}
 
-	fmt.Println("Hotkey registered: Ctrl+Alt+F1")
-	fmt.Println("Press Ctrl+C to exit")
+	log.Println("Hotkey registered: Ctrl+Alt+F1")
 
 	// Setup signal channel for graceful shutdown
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 
-	// Use a channel to communicate when hotkey is pressed
-	hotkeyPressed := make(chan bool)
-
-	// Message loop to capture hotkey events - run in main thread
+	// Message loop to capture hotkey events
 	go func() {
 		var msg MSG
 		for {
 			result := GetMessage(&msg, 0, 0, 0)
-			fmt.Println("result", result)
-			if result == 0 {
-				// WM_QUIT message
-				return
-			}
-			if result == -1 {
-				// Error
+			if result <= 0 {
+				// WM_QUIT message or error
 				return
 			}
 
 			if msg.Message == WM_HOTKEY {
-				fmt.Println("Hotkey triggered!")
-				// Add your code to handle the hotkey here
+				log.Println("Hotkey triggered!")
+				CaptureScreenshot()
 			}
 			TranslateMessage(&msg)
 			DispatchMessage(&msg)
 		}
 	}()
 
-	// Wait for hotkey or Ctrl+C
-	for {
-		select {
-		case <-hotkeyPressed:
-			fmt.Println("Hotkey action running...")
-			// Add your hotkey action code here
+	// Wait for SIGTERM
+	<-sigCh
 
-		case <-sigCh:
-			// Unregister the hotkey before exiting
-			UnregisterHotKey(0, int32(hotkeyID))
-			fmt.Println("Hotkey unregistered. Exiting...")
-			return
-		}
-	}
+	// Unregister the hotkey before exiting
+	UnregisterHotKey(0, int32(hotkeyID))
+	log.Println("Hotkey unregistered")
 }
