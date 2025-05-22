@@ -1,15 +1,23 @@
 # Screen Moments
 
-A simple application for capturing screenshots and receiving RTMP video streams from OBS.
+Sometimes, I play video games with friends. Sometimes, this is really funny. Rarely, I like to cut together some clips of the best moments using the excellent [losslesscut](https://mifi.no/losslesscut/) video cutting software and show it to them in our chat.
 
-## Features
+I did not realize steam has a [rolling buffer screen recording feature now](https://help.steampowered.com/en/faqs/view/23B7-49AD-4A28-9590) (which is very cool and fills this niche nicely). 
 
-- Screenshot capture using hotkey (Ctrl+Alt+F1)
-- RTMP server to receive video streams from OBS
+Because I did not know about the steam feature, I came up with a plan to implement this on my own:
 
-## RTMP Streaming from OBS
+1. Use OBS to record (because I sure did not feel like implementing screen recording and video compression **well** myself)
+2. Have OBS target localhost as a streaming target and keep that rolling the entire time
+3. Write a program that recieves this stream and listens to hotkeys to permanently keep the last X minutes of stream on disk
 
-To stream video from OBS to Screen Moments:
+I have had a suprising amount of success having claude vibe code this entire thing in golang. It is not 100% finished, and I am bailing out of this project for reasons above, but I am uploading the result for future reference, in case I need to make some other small utility program for windows.
+
+
+## how to run 
+
+`air`
+
+## how to target
 
 1. Open OBS Studio
 2. Go to Settings -> Stream
@@ -18,66 +26,3 @@ To stream video from OBS to Screen Moments:
 5. Set the Stream Key to: `screenmoments`
 6. Click "OK" to save settings
 7. Click "Start Streaming" in OBS
-
-The Screen Moments application will automatically receive and display the RTMP stream status.
-
-## Building from Source
-
-```bash
-# Get dependencies
-go mod tidy
-
-# Run the application
-go run .
-
-# Build the application
-go build .
-```
-
-## Requirements
-
-- Go 1.20 or later
-- OBS Studio (for RTMP streaming)
-
-## Installation
-
-1. Clone the repository:
-```
-git clone https://github.com/yourusername/screenmoments.git
-cd screenmoments
-```
-
-2. Install dependencies:
-```
-go mod tidy
-```
-
-3. Build the application:
-```
-go build
-```
-
-## Usage
-
-Run the application:
-```
-./screenmoments.exe
-```
-
-Press Ctrl+Alt+F1 to trigger the registered hotkey.
-Press Ctrl+C to exit the application.
-
-## Customization
-
-To change the hotkey combination, modify the `main.go` file and adjust the following line:
-```go
-if !win.RegisterHotKey(0, hotkeyID, MOD_CONTROL|MOD_ALT, VK_F1) {
-```
-
-Available modifiers:
-- MOD_ALT (Alt key)
-- MOD_CONTROL (Ctrl key)
-- MOD_SHIFT (Shift key)
-- MOD_WIN (Windows key)
-
-Virtual key codes are defined as constants in the code. 
