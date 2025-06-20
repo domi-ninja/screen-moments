@@ -1,4 +1,4 @@
-# Screen Moments
+# Golang + RTMP
 
 Sometimes, I play video games with friends. Sometimes, this is really funny. Rarely, I like to cut together some clips of the best moments using the excellent [losslesscut](https://mifi.no/losslesscut/) video cutting software and show it to them in our chat.
 
